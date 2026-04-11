@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin dashboard- Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+
+<header class="header">
+  <div class="logo">
+   <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+    <h1>Shansha Artistry</h1> 
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="user_login.html">Login</a>
+
+  </nav>
+</header>
+
+
+<h2>Admin Dashboard</h2>
+
+<h3>Add Product</h3>
+<input id="name" placeholder="Product Name">
+<input id="price" placeholder="Price">
+<input id="image" placeholder="Image URL">
+<button onclick="addProduct()">Add</button>
+
+<h3>Products</h3>
+<div id="products"></div>
+
+<h3>Orders</h3>
+<div id="orders"></div>
+
+<script>
+function addProduct() {
+  fetch("http://localhost:5000/api/products", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      name: document.getElementById("name").value,
+      price: document.getElementById("price").value,
+      image: document.getElementById("image").value
+    })
+  }).then(() => loadProducts());
+}
+
+function loadProducts() {
+  fetch("http://localhost:5000/api/products")
+    .then(res => res.json())
+    .then(data => {
+      let html = "";
+      data.forEach(p => {
+        html += `
+          <div>
+            <img src="${p.image}" width="100">
+            <h4>${p.name}</h4>
+            <p>₹${p.price}</p>
+            <button onclick="deleteProduct('${p._id}')">Delete</button>
+          </div>
+        `;
+      });
+      document.getElementById("products").innerHTML = html;
+    });
+}
+
+function deleteProduct(id) {
+  fetch("http://localhost:5000/api/products/" + id, {
+    method: "DELETE"
+  }).then(() => loadProducts());
+}
+
+loadProducts();
+
+function loadOrders() {
+  fetch("http://localhost:5000/api/orders")
+    .then(res => res.json())
+    .then(data => {
+      let html = "";
+      data.forEach(o => {
+        html += `
+          <div>
+            <h4>${o.name}</h4>
+            <p>${o.product}</p>
+          </div>
+        `;
+      });
+      document.getElementById("orders").innerHTML = html;
+    });
+}
+
+loadOrders();
+</script>

@@ -1,0 +1,170 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>cart - Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+    <h1>Shansha Artistry</h1> 
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="admin_login.html">Admin</a>
+    <a href="user_login.html">Login</a>
+
+  </nav>
+</header>
+
+
+ <div id="cart-items"></div>
+
+<h2 id="totalPrice">Total: ₹0</h2>
+
+<a id="whatsappOrder" target="_blank">Order on WhatsApp</a>
+
+<br><br>
+<button id="orderBtn" onclick="placeOrder()">Place Order</button > 
+
+
+
+<script>
+
+let container;
+let orderBtn;
+
+// DOM LOAD hone ke baad hi elements lo
+document.addEventListener("DOMContentLoaded", function () {
+
+  container = document.getElementById("cart-items");
+  orderBtn = document.getElementById("orderBtn");
+
+  renderCart();
+
+  // PLACE ORDER BUTTON FIX
+  orderBtn.addEventListener("click", placeOrder);
+});
+
+
+// GET CART
+function getCart() {
+  return JSON.parse(localStorage.getItem("cart")) || [];
+}
+
+// SAVE CART
+function saveCart(cart) {
+  localStorage.setItem("cart", JSON.stringify(cart));
+}
+
+// RENDER CART
+function renderCart() {
+
+  let cart = getCart();
+  console.log("Cart Data:", cart);
+
+  container.innerHTML = "";
+
+  if (cart.length === 0) {
+    container.innerHTML = "<h2>Your cart is empty 🛒</h2>";
+    document.getElementById("totalPrice").innerText = "Total: ₹0";
+    orderBtn.disabled = true;
+    return;
+  }
+
+  orderBtn.disabled = false;
+
+  let total = 0;
+
+  cart.forEach((item, index) => {
+
+    let price = parseInt(item.price.replace(/[^\d]/g, "")) || 0;
+    let qty = item.quantity || 1;
+
+    total += price * qty;
+
+    let div = document.createElement("div");
+
+    div.innerHTML = `
+      <img src="${item.image}" width="80" onerror="this.src='IMAGES/logo.jpg'">
+
+      <div>
+        <h3>${item.name}</h3>
+        <p>${item.price}</p>
+
+        <button onclick="changeQty(${index}, -1)">-</button>
+        <span>${qty}</span>
+        <button onclick="changeQty(${index}, 1)">+</button>
+
+        <br>
+        <button onclick="removeItem(${index})">Remove</button>
+        <hr>
+      </div>
+    `;
+
+    container.appendChild(div);
+  });
+
+  document.getElementById("totalPrice").innerText = "Total: ₹" + total;
+
+  // WhatsApp message
+  let message = "Order Details:%0A";
+
+  cart.forEach(item => {
+    message += `${item.name} x${item.quantity} - ${item.price}%0A`;
+  });
+
+  message += `Total: ₹${total}`;
+
+  document.getElementById("whatsappOrder").href =
+    "https://wa.me/917000916463?text=" + message;
+}
+
+
+// CHANGE QTY
+function changeQty(index, change) {
+  let cart = getCart();
+
+  cart[index].quantity = (cart[index].quantity || 1) + change;
+
+  if (cart[index].quantity <= 0) {
+    cart.splice(index, 1);
+  }
+
+  saveCart(cart);
+  renderCart();
+}
+
+// REMOVE ITEM
+function removeItem(index) {
+  let cart = getCart();
+  cart.splice(index, 1);
+  saveCart(cart);
+  renderCart();
+}
+
+// PLACE ORDER
+function placeOrder() {
+
+  let cart = getCart();
+
+  if (cart.length === 0) {
+    alert("Cart is empty!");
+    return;
+  }
+
+  alert("✅ Order Placed Successfully!");
+
+  localStorage.removeItem("cart");
+  renderCart();
+}
+
+</script>
+
+</body>
+</html>

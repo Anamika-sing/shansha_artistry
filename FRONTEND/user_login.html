@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title> User Login - Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+  <div class="logo">
+    <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+    <h1>Shansha Artistry</h1> 
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="admin_login.html">Admin</a>
+  </nav>
+</header>
+
+<div class="auth-container">
+
+  <h2 id="formTitle"> User Login</h2>
+
+  <input type="text" id="name" placeholder="Full Name" style="display:none;">
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+
+  <button onclick="handleAuth()">Login</button>
+
+  <p id="toggleText">
+    Don't have an account? 
+    <span onclick="toggleForm()">Signup</span>
+  </p>
+
+</div>
+
+<script>
+
+let isLogin = true;
+
+function toggleForm() {
+  isLogin = !isLogin;
+
+  document.getElementById("formTitle").innerText = isLogin ? "Login" : "Signup";
+  document.querySelector("button").innerText = isLogin ? "Login" : "Signup";
+  document.getElementById("name").style.display = isLogin ? "none" : "block";
+
+  document.getElementById("toggleText").innerHTML = isLogin 
+    ? `Don't have an account? <span onclick="toggleForm()">Signup</span>`
+    : `Already have an account? <span onclick="toggleForm()">Login</span>`;
+}
+
+function handleAuth() {
+
+  let name = document.getElementById("name").value;
+  let email = document.getElementById("email").value;
+  let password = document.getElementById("password").value;
+
+  let users = JSON.parse(localStorage.getItem("users")) || [];
+
+  if (isLogin) {
+    // LOGIN
+    // let user = users.find(u => u.email === email && u.password === password);
+    fetch("http://localhost:5000/api/users/login", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ email, password })
+})
+.then(res => res.json())
+.then(data => {
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("currentUser", JSON.stringify(data.user));
+    alert("Login Successful!");
+    window.location.href = "shop.html";
+  } else {
+    alert(data.msg);
+  }
+})
+.catch(err => console.log(err));
+    if (user) {
+      localStorage.setItem("currentUser", JSON.stringify(user));
+      alert("Login Successful!");
+      window.location.href = "shop.html";
+    } else {
+      alert("Invalid credentials!");
+    }
+
+  } else {
+    // SIGNUP
+    if (!name || !email || !password) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    let exists = users.find(u => u.email === email);
+
+    if (exists) {
+      alert("User already exists!");
+      return;
+    }
+
+    
+fetch("http://localhost:5000/api/users/signup", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ name, email, password })
+})
+.then(res => res.json())
+.then(data => {
+  alert(data.msg);
+  toggleForm();
+})
+.catch(err => console.log(err));
+
+    // let newUser = { name, email, password };
+
+    // users.push(newUser);
+    // localStorage.setItem("users", JSON.stringify(users));
+
+    alert("Signup Successful! Now Login.");
+    toggleForm();
+  }
+}
+
+</script>
+
+</body>
+</html>

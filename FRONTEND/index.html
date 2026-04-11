@@ -1,1 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shansha Artistry - Home</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+<header class="header">
+ 
+  <div class="logo">
+    <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+     <h1> Shansha Artistry</h1>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="cart.html">Cart</a>
+    <a href="admin_login.html">Admin</a>
+    <a href="user_login.html">Login</a>
+
+
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-text">
+    <h1>Unique Lippan Art at Your Budget Price</h1>
+    <p>Handcrafted decor to beautify your home</p>
+    <br>
+    <br>
+    <div class="hero-buttons">
+      <a href="shop.html" class="btn primary">🛒 Shop Now</a>
+      <a href="https://instagram.com/shansha_artistry" class="btn insta">📩 DM on Instagram</a>
+    </div>
+  </div>
+</section>
+
+<section class="products">
+  <h2> Best Selling Lippan Art</h2>
+  <br>
+  <div class="product-grid">
+    <div class="card">
+      <img src="IMAGES/wall hanging.jpeg" alt="">
+      <h3>Lippan  wall hanging</h3>
+      <p>₹999</p>
+      <button onclick="addToCart('Lippan Wall Hanging', 999, 'IMAGES/wall hanging.jpeg')">
+    Add to Cart
+  </button>
+    </div>
+    <div class="card">
+      <img src="IMAGES/candle.jpeg" alt="">
+      <h3>candle holder</h3>
+      <p>₹799</p>
+      <button onclick="addToCart('Candle holder', 799, 'IMAGES/candle.jpeg')">
+    Add to Cart
+  </button>
+    </div>
+    <div class="card">
+      <img src="IMAGES/mirror.jpeg" alt="">
+      <h3>Decorative Mirror</h3>
+      <p>₹1299</p>
+      <button onclick="addToCart('Decorative Mirror', 1299, 'IMAGES/mirror.jpeg')">
+    Add to Cart
+  </button>
+    </div>
+
+  </div>
+</section>
+
+<section class="why">
+  <h2> Why Shansha Artistry?</h2>
+  <div class="why-grid">
+    <div>✔ 100% Handmade</div>
+    <div>✔ Budget Friendly</div>
+    <div>✔ Custom Orders</div>
+    <div>✔ PAN India Delivery</div>
+  </div>
+</section>
+
+<section class="testimonials">
+  <h2> Client Feedback</h2>
+  <p> "Beautiful artwork & fast delivery!"</p>
+  <p> "Loved my custom name plate!"</p>
+</section>
+
+<footer class="footer">
+  <p>📞 7000916463 | 7067759119</p>
+  <p>📩 DM on Instagram: @shansha_artistry</p>
+  <p>🚚 PAN India Delivery</p>
+</footer>
+
+<a class="whatsapp" href="https://wa.me/917000916463">💬</a>
+
+<script>
+function addToCart(name, price, image) {
+  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+  let product = {
+    name: name,
+    price: price,
+    image: image,
+    quantity: 1
+  };
+
+  // check if already exists
+  let existing = cart.find(item => item.name === name);
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    cart.push(product);
+  }
+
+  localStorage.setItem("cart", JSON.stringify(cart));
+
+  alert("Item added to cart ✅");
+}
+</script>
+
+</body>
+</html>
