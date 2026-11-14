@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin dashboard- Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+   <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+    <h1>Shansha Artistry</h1>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="user_login.html">Login</a>
+  </nav>
+</header>
+
+<h2>Customer Orders</h2>
+
+<table border="1" cellpadding="10">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Mobile</th>
+            <th>Address</th>
+            <th>Product</th>
+            <th>Total</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody id="ordersTable">
+    </tbody>
+</table>
+
+<h2>Admin Dashboard</h2>
+
+<h3>Add Product</h3>
+<input id="name" placeholder="Product Name">
+<input id="price" placeholder="Price">
+<input id="image" placeholder="Image URL">
+<select id="category">
+  <option value="">Select Category</option>
+  <option value="Small">Small</option>
+  <option value="Medium">Medium</option>
+  <option value="Large">Large</option>
+</select>
+<button onclick="addProduct()">Add</button>
+
+<h3>Products</h3>
+<div id="products"></div>
+
+<script>
+// admin login ke bina dashboard nahi khulega
+if (!localStorage.getItem("adminToken")) {
+  window.location.href = "admin_login.html";
+}
+
+function authHeader() {
+  return { Authorization: "Bearer " + localStorage.getItem("adminToken") };
+}
+
+function sessionExpired() {
+  alert("Session expired. Please login again.");
+  localStorage.removeItem("adminToken");
+  window.location.href = "admin_login.html";
+}
+
+// ---------- ORDERS ----------
+function itemsText(items) {
+  if (!Array.isArray(items)) return "";
+  return items
+    .map(function (it) {
+      if (typeof it === "string") return it;
+      return (it.name || "Item") + " x " + (it.quantity || 1);
+    })
+    .join(", ");
+}
+
+async function loadOrders() {
+  const table = document.getElementById("ordersTable");
+
+  try {
+    const response = await fetch("http://localhost:5000/api/orders", {
+      headers: authHeader()
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      sessionExpired();
+      return;
+    }
+    if (!response.ok) {
+      throw new Error("Orders not loaded");
+    }
+
+    const orders = await response.json();
+    table.innerHTML = "";
+
+    if (!Array.isArray(orders) || orders.length === 0) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 10;
+      cell.textContent = "No orders yet.";
+      row.appendChild(cell);
+      table.appendChild(row);
+      return;
+    }
+
+    orders.forEach(function (order) {
+      const when = new Date(order.createdAt || order.date);
+
+      const cells = [
+        isNaN(when) ? "" : when.toLocaleString("en-IN"),
+        order.name || "",
+        order.email || "",
+        order.mobile || "",
+        order.address || "",
+        itemsText(order.items),
+        "\u20B9" + (order.total || 0),
+        order.paymentMethod || "",
+        order.paymentStatus || "Pending"
+      ];
+
+      const row = document.createElement("tr");
+      cells.forEach(function (text) {
+        const td = document.createElement("td");
+        td.textContent = text;
+        row.appendChild(td);
+      });
+
+      // status badalne ke liye dropdown + button
+      const actionTd = document.createElement("td");
+      const select = document.createElement("select");
+      ["Pending", "Paid", "Cancelled"].forEach(function (st) {
+        const opt = document.createElement("option");
+        opt.value = st;
+        opt.textContent = st;
+        if ((order.paymentStatus || "Pending") === st) opt.selected = true;
+        select.appendChild(opt);
+      });
+      const btn = document.createElement("button");
+      btn.textContent = "Update";
+      btn.onclick = function () { updateStatus(order._id, select.value); };
+      actionTd.append(select, btn);
+      row.appendChild(actionTd);
+
+      table.appendChild(row);
+    });
+  } catch (error) {
+    console.error("Orders error:", error);
+    alert("Orders not loading. Please check the server.");
+  }
+}
+
+async function updateStatus(id, paymentStatus) {
+  try {
+    const response = await fetch("http://localhost:5000/api/orders/" + id + "/status", {
+      method: "PUT",
+      headers: Object.assign({ "Content-Type": "application/json" }, authHeader()),
+      body: JSON.stringify({ paymentStatus })
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      sessionExpired();
+      return;
+    }
+    if (!response.ok) {
+      throw new Error("Status not updated");
+    }
+
+    alert("Status updated: " + paymentStatus);
+    loadOrders();
+  } catch (error) {
+    console.error("Status update error:", error);
+    alert("Status not updated. Please check the server.");
+  }
+}
+
+// ---------- PRODUCTS ----------
+async function addProduct() {
+  const name = document.getElementById("name").value.trim();
+  const price = Number(document.getElementById("price").value);
+  const image = document.getElementById("image").value.trim();
+  const category = document.getElementById("category").value;
+
+  if (!name || !price || !image || !category) {
+    alert("Please fill in all product details and select a category!");
+    return;
+  }
+
+  try {
+    const response = await fetch("http://localhost:5000/api/products", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, authHeader()),
+      body: JSON.stringify({ name, price, image, category })
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      sessionExpired();
+      return;
+    }
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || result.message || "Product not added");
+    }
+
+    alert("Product successfully added!");
+    document.getElementById("name").value = "";
+    document.getElementById("price").value = "";
+    document.getElementById("image").value = "";
+    document.getElementById("category").value = "";
+
+    loadProducts();
+  } catch (error) {
+    console.error("Add product error:", error);
+    alert("Product not added: " + error.message);
+  }
+}
+
+async function loadProducts() {
+  const productsDiv = document.getElementById("products");
+
+  try {
+    const response = await fetch("http://localhost:5000/api/products");
+
+    if (!response.ok) {
+      throw new Error("Products not found");
+    }
+
+    const data = await response.json();
+    productsDiv.innerHTML = "";
+
+    if (!Array.isArray(data) || data.length === 0) {
+      productsDiv.innerHTML = "<p>No products available.</p>";
+      return;
+    }
+
+    data.forEach(function (p) {
+      const card = document.createElement("div");
+      card.className = "product-card";
+
+      const img = document.createElement("img");
+      img.src = p.image || "";
+      img.alt = p.name || "Product";
+      img.width = 120;
+      img.height = 120;
+      img.style.objectFit = "contain";
+      img.onerror = function () { img.style.display = "none"; };
+
+      const name = document.createElement("h4");
+      name.textContent = p.name || "Unnamed Product";
+
+      const price = document.createElement("p");
+      price.textContent = "\u20B9" + (p.price ?? 0);
+
+      const cat = document.createElement("p");
+      cat.textContent = "Category: " + (p.category || "-");
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.onclick = function () { deleteProduct(p._id); };
+
+      card.append(img, name, price, cat, deleteBtn);
+      productsDiv.appendChild(card);
+    });
+  } catch (error) {
+    console.error("Product loading error:", error);
+    productsDiv.innerHTML = "<p>Products not found. Please try again later.</p>";
+  }
+}
+
+async function deleteProduct(id) {
+  if (!confirm("Are you sure you want to delete this product?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch("http://localhost:5000/api/products/" + id, {
+      method: "DELETE",
+      headers: authHeader()
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      sessionExpired();
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error("Product delete failed");
+    }
+
+    alert("Product deleted successfully!");
+    loadProducts();
+  } catch (error) {
+    console.error("Delete error:", error);
+    alert("Product not deleted. Please check the console or server.");
+  }
+}
+
+// page load
+loadOrders();
+loadProducts();
+</script>
+
+</body>
+</html>

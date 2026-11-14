@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Orders - Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .mo-wrap { max-width: 760px; margin: 32px auto; padding: 0 16px; }
+    .mo-wrap h2 { margin-bottom: 16px; }
+    .mo-card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-bottom: 14px; background: #fff; }
+    .mo-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .mo-date { color: #666; font-size: 14px; }
+    .mo-badge { padding: 3px 10px; border-radius: 999px; font-size: 13px; }
+    .mo-pending { background: #fff3cd; color: #664d03; }
+    .mo-paid { background: #d1e7dd; color: #0a3622; }
+    .mo-cancelled { background: #f8d7da; color: #58151c; }
+    .mo-items { margin: 0 0 10px 18px; padding: 0; }
+    .mo-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 15px; }
+    .mo-addr { color: #555; font-size: 14px; margin-top: 8px; }
+    .mo-empty { text-align: center; padding: 40px 16px; color: #555; }
+    .mo-empty a { display: inline-block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo">
+      <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo">
+    </div>
+    <h1>Shansha Artistry</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="shop.html">Shop</a>
+      <a href="my_orders.html">My Orders</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </header>
+
+  <div class="mo-wrap">
+    <h2>My Orders</h2>
+    <div id="orders">
+      <p class="mo-empty">Orders load ho rahe hain...</p>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:5000/api/orders/my";
+    const box = document.getElementById("orders");
+
+    function goLogin(msg) {
+      if (msg) alert(msg);
+      localStorage.removeItem("token");
+      window.location.href = "user_login.html";
+    }
+
+    function itemText(it) {
+      if (typeof it === "string") return it;
+      if (it && typeof it === "object") {
+        const n = it.name || it.product || "Item";
+        return it.qty || it.quantity ? n + " x " + (it.qty || it.quantity) : n;
+      }
+      return String(it);
+    }
+
+    function statusClass(s) {
+      if (s === "Paid") return "mo-paid";
+      if (s === "Cancelled") return "mo-cancelled";
+      return "mo-pending";
+    }
+
+    function makeEl(tag, cls, text) {
+      const el = document.createElement(tag);
+      if (cls) el.className = cls;
+      if (text !== undefined) el.textContent = text;
+      return el;
+    }
+
+    function renderOrders(orders) {
+      box.innerHTML = "";
+
+      if (!Array.isArray(orders) || orders.length === 0) {
+        const empty = makeEl("div", "mo-empty");
+        empty.appendChild(makeEl("p", "", "no orders found."));
+        const link = makeEl("a", "", "go to shop");
+        link.href = "shop.html";
+        empty.appendChild(link);
+        box.appendChild(empty);
+        return;
+      }
+
+      orders.forEach((o) => {
+        const card = makeEl("div", "mo-card");
+
+        const top = makeEl("div", "mo-top");
+        const when = new Date(o.createdAt || o.date);
+        top.appendChild(makeEl("span", "mo-date", isNaN(when) ? "" : when.toLocaleString("en-IN")));
+        top.appendChild(makeEl("span", "mo-badge " + statusClass(o.paymentStatus), o.paymentStatus || "Pending"));
+        card.appendChild(top);
+
+        const list = makeEl("ul", "mo-items");
+        (o.items || []).forEach((it) => list.appendChild(makeEl("li", "", itemText(it))));
+        card.appendChild(list);
+
+        const row = makeEl("div", "mo-row");
+        row.appendChild(makeEl("span", "", "Payment: " + (o.paymentMethod || "-")));
+        row.appendChild(makeEl("strong", "", "Total: \u20B9" + (o.total ?? 0)));
+        card.appendChild(row);
+
+        if (o.address) card.appendChild(makeEl("p", "mo-addr", "Deliver to: " + o.address));
+
+        box.appendChild(card);
+      });
+    }
+
+    async function loadOrders() {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        goLogin("firstly login to see orders.");
+        return;
+      }
+
+      try {
+        const res = await fetch(API, {
+          headers: { Authorization: "Bearer " + token }
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          goLogin("Session expired or unauthorized. Please login again.");
+          return;
+        }
+        if (!res.ok) throw new Error("check backend server or network. not able to load orders.");
+
+        renderOrders(await res.json());
+      } catch (err) {
+        console.error(err);
+        box.innerHTML = "";
+        box.appendChild(makeEl("p", "mo-empty", "check backend server or network. not able to load orders."));
+      }
+    }
+
+    loadOrders();
+  </script>
+
+</body>
+</html>

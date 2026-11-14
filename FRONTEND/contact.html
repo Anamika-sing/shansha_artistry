@@ -1,0 +1,128 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Contact & Order - Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+    <h1>Shansha Artistry</h1> 
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="admin_login.html">Admin</a>
+    <a href="user_login.html">Login</a>
+
+  </nav>
+</header>
+
+<section class="contact">
+  <h1>📞 Contact & Orders</h1>
+
+  <div class="contact-grid">
+    <div class="contact-info">
+      <p><b>📱 Phone:</b> 7000916463 / 7067759119</p>
+      <p><b>📩 Instagram:</b> 
+        <a href="https://instagram.com/shansha_artistry" target="_blank">
+          @shansha_artistry
+        </a>
+      </p>
+      <p><b>🚚 Delivery:</b> PAN India</p>
+      <a class="btn primary" href="https://wa.me/917000916463">Chat on WhatsApp</a>
+    </div>
+
+    <div class="contact-form">
+      <h2>Send Us a Message</h2>
+    <form onsubmit="sendToWhatsApp(event)">
+      <input type="text" placeholder="Your Name" required>
+      <input type="email" placeholder="Your Email" required>
+      <textarea placeholder="Your Message"></textarea>
+      <button type="submit">Send Message</button>
+    </form>
+  </div>
+
+  <br>
+
+  <button onclick="orderNow()">🛒 Order with Cart</button>
+
+</section>
+
+<a class="whatsapp" href="https://wa.me/917000916463">💬</a>
+
+
+<script>
+
+// FORM → WHATSAPP
+function sendToWhatsApp(e) {
+  e.preventDefault();
+
+  let name = document.getElementById("name").value;
+  let email = document.getElementById("email").value;
+  let message = document.getElementById("message").value;
+
+  let url = "https://wa.me/917000916463?text="
+    + "Name: " + name + "%0A"
+    + "Email: " + email + "%0A"
+    + "Message: " + message;
+
+  window.open(url, "_blank");
+}
+
+// CART → WHATSAPP ORDER
+function orderNow() {
+
+  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+  if(cart.length === 0){
+    alert("Cart is empty!");
+    return;
+  }
+
+  let msg = "Order Details:%0A";
+
+  cart.forEach(item => {
+    msg += item.name + " x" + (item.quantity || 1) + " - " + item.price + "%0A";
+  });
+
+  window.open("https://wa.me/917000916463?text=" + msg, "_blank");
+}
+
+
+document.querySelector(".contact-form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const name = this.querySelector("input[type='text']").value;
+  const email = this.querySelector("input[type='email']").value;
+  const message = this.querySelector("textarea").value;
+
+  const response = await fetch("http://localhost:5000/api/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      message,
+      cart: JSON.parse(localStorage.getItem("cart")) || []
+    })
+  });
+
+  const data = await response.json();
+  alert("Order Placed Successfully 🎉");
+});
+
+</script>
+
+
+
+</body>
+</html>
+
+

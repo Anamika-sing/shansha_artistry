@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cash on Delivery - Shansha Artistry</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="codForm">
+
+        <h2>Cash on Delivery</h2>
+
+        <input type="text" id="codName" placeholder="Name">
+
+        <input type="email" id="codEmail" placeholder="Email">
+
+        <input type="text" id="codMobile" placeholder="Mobile">
+
+        <textarea id="codAddress" placeholder="Address"></textarea>
+
+        <button type="button" id="codBtn">
+            Confirm COD Order
+        </button>
+
+    </div>
+
+    <script>
+        async function confirmCODOrder() {
+            const name = document.getElementById("codName").value.trim();
+            const email = document.getElementById("codEmail").value.trim();
+            const mobile = document.getElementById("codMobile").value.trim();
+            const address = document.getElementById("codAddress").value.trim();
+
+            if (!name || !email || !mobile || !address) {
+                alert("Please fill all details");
+                return;
+            }
+
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("Order karne ke liye pehle login karein.");
+                window.location.href = "user_login.html";
+                return;
+            }
+
+            // double click se duplicate order na bane
+            const btn = document.getElementById("codBtn");
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = "Placing order...";
+
+            const params = new URLSearchParams(window.location.search);
+            const fromCart = params.get("from") === "cart";
+
+            let items;
+            let total;
+
+            if (fromCart) {
+                const cart = JSON.parse(localStorage.getItem("cart")) || [];
+                if (cart.length === 0) {
+                    alert("Cart khali hai");
+                    window.location.href = "shop.html";
+                    return;
+                }
+                items = cart.map(function (i) {
+                    return {
+                        name: i.name,
+                        price: i.price,
+                        quantity: i.quantity || 1
+                    };
+                });
+                total = cart.reduce(function (sum, i) {
+                    const p = parseInt(String(i.price).replace(/[^\d]/g, "")) || 0;
+                    return sum + p * (i.quantity || 1);
+                }, 0);
+            } else {
+                items = [params.get("product") || "Product"];
+                total = Number(params.get("amount")) || 0;
+            }
+
+            try {
+                const response = await fetch("http://localhost:5000/api/orders", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: "Bearer " + token
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        mobile: mobile,
+                        address: address,
+                        items: items,
+                        total: total,
+                        paymentMethod: "COD",
+                        paymentStatus: "Pending"
+                    })
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    alert("Session khatam ho gaya. Dobara login karein.");
+                    localStorage.removeItem("token");
+                    window.location.href = "user_login.html";
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (fromCart) localStorage.removeItem("cart");
+                    alert("COD Order Successfully Placed!");
+                    window.location.href = "my_orders.html";
+                } else {
+                    console.log(data);
+                    alert("COD order place nahi hua");
+                    btn.disabled = false;
+                    btn.textContent = "Confirm COD Order";
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Server not connected. Try again later.");
+                btn.disabled = false;
+                btn.textContent = "Confirm COD Order";
+            }
+        }
+
+        document.getElementById("codBtn").addEventListener("click", confirmCODOrder);
+    </script>
+
+</body>
+
+</html>

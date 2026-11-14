@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Online Payment - Shansha Artistry</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body>
+
+    <div id="codForm">
+
+        <h2>Online Payment</h2>
+
+        <p id="productInfo">Load ho raha hai...</p>
+
+        <input type="text" id="codName" placeholder="Name">
+
+        <input type="email" id="codEmail" placeholder="Email">
+
+        <input type="text" id="codMobile" placeholder="Mobile">
+
+        <textarea id="codAddress" placeholder="Address"></textarea>
+
+        <button type="button" id="payBtn" disabled>
+            Pay Now
+        </button>
+
+    </div>
+
+    <script>
+        const API = "http://localhost:5000/api";
+        const params = new URLSearchParams(window.location.search);
+        const productId = params.get("id");
+        const fromCart = params.get("from") === "cart";
+
+        const payBtn = document.getElementById("payBtn");
+        const info = document.getElementById("productInfo");
+
+        let orderItems = [];   // [{ productId, quantity }]
+        let description = "";
+
+        function goLogin(msg) {
+            if (msg) alert(msg);
+            localStorage.removeItem("token");
+            window.location.href = "user_login.html";
+        }
+
+        function resetButton() {
+            payBtn.disabled = false;
+            payBtn.textContent = "Pay Now";
+        }
+
+        function parsePrice(v) {
+            return Number(String(v).replace(/[^\d.]/g, "")) || 0;
+        }
+
+        async function loadOrderDetails() {
+            if (!localStorage.getItem("token")) {
+                goLogin("Payment ke liye pehle login karein.");
+                return;
+            }
+
+            try {
+                const res = await fetch(API + "/products");
+                if (!res.ok) throw new Error("Products load nahi hue");
+                const list = await res.json();
+
+                if (fromCart) {
+                    // CART SE: har item ko database ke product se milao
+                    let cart = [];
+                    try { cart = JSON.parse(localStorage.getItem("cart")) || []; } catch (e) { cart = []; }
+
+                    if (!Array.isArray(cart) || cart.length === 0) {
+                        info.textContent = "Cart khali hai. Shop par wapas jao.";
+                        return;
+                    }
+
+                    const items = [];
+                    const missing = [];
+                    let total = 0;
+
+                    cart.forEach(function (item) {
+                        const qty = item.quantity || 1;
+                        let prod = null;
+
+                        if (item.productId) {
+                            prod = list.find(function (p) { return p._id === item.productId; });
+                        }
+                        if (!prod) {
+                            prod = list.find(function (p) {
+                                return p.name === item.name && p.image === item.image;
+                            });
+                        }
+
+                        if (!prod) {
+                            missing.push(item.name || "Item");
+                            return;
+                        }
+
+                        items.push({ productId: prod._id, quantity: qty });
+                        total += parsePrice(prod.price) * qty;
+                    });
+
+                    if (missing.length > 0) {
+                        info.textContent =
+                            "Cart ke ye items shop mein nahi mile: " + missing.join(", ") +
+                            ". Cart khali karke dobara add karein.";
+                        return;
+                    }
+
+                    orderItems = items;
+                    description = "Cart order (" + cart.length + " items)";
+                    info.textContent = cart.length + " item(s) - Total \u20B9" + total;
+                } else {
+                    // BUY NOW: ek product
+                    const product = list.find(function (p) { return p._id === productId; });
+
+                    if (!product) {
+                        info.textContent = "Product nahi mila. Shop par wapas jao.";
+                        return;
+                    }
+
+                    orderItems = [{ productId: product._id, quantity: 1 }];
+                    description = product.name;
+                    info.textContent = product.name + " - \u20B9" + product.price;
+                }
+
+                payBtn.disabled = false;
+            } catch (err) {
+                console.error(err);
+                info.textContent = "Load nahi hua. Backend chal raha hai?";
+            }
+        }
+
+        async function startPayment() {
+            const name = document.getElementById("codName").value.trim();
+            const email = document.getElementById("codEmail").value.trim();
+            const mobile = document.getElementById("codMobile").value.trim();
+            const address = document.getElementById("codAddress").value.trim();
+
+            if (!name || !email || !mobile || !address) {
+                alert("Please fill all details");
+                return;
+            }
+
+            const token = localStorage.getItem("token");
+            if (!token) {
+                goLogin("Payment ke liye pehle login karein.");
+                return;
+            }
+
+            if (payBtn.disabled) return;
+            payBtn.disabled = true;
+            payBtn.textContent = "Please wait...";
+
+            const headers = {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token
+            };
+
+            try {
+                // 1. server par order banao (price server nikalta hai)
+                const res = await fetch(API + "/payment/create-order", {
+                    method: "POST",
+                    headers: headers,
+                    body: JSON.stringify({ name, email, mobile, address, items: orderItems })
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    goLogin("Session khatam ho gaya. Dobara login karein.");
+                    return;
+                }
+
+                const order = await res.json();
+
+                if (!res.ok) {
+                    alert(order.message || "Order create nahi hua");
+                    resetButton();
+                    return;
+                }
+
+                // 2. Razorpay popup kholo
+                const options = {
+                    key: order.keyId,
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: "Shansha Artistry",
+                    description: description,
+                    order_id: order.id,
+                    prefill: { name: name, email: email, contact: mobile },
+                    theme: { color: "#3399cc" },
+
+                    // 3. payment ho jaye to server se verify karao
+                    handler: async function (response) {
+                        try {
+                            const v = await fetch(API + "/payment/verify", {
+                                method: "POST",
+                                headers: headers,
+                                body: JSON.stringify({
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature
+                                })
+                            });
+
+                            if (v.ok) {
+                                if (fromCart) localStorage.removeItem("cart");
+                                alert("Payment successful! Order place ho gaya.");
+                                window.location.href = "my_orders.html";
+                            } else {
+                                alert("Payment verify nahi hua. Paise kate hon to hume contact karein.");
+                                resetButton();
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            alert("Verify karte waqt server se connection nahi hua.");
+                            resetButton();
+                        }
+                    },
+
+                    modal: {
+                        ondismiss: function () { resetButton(); }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+
+                rzp.on("payment.failed", function (resp) {
+                    console.error(resp.error);
+                    alert("Payment fail ho gaya. Dobara koshish karein.");
+                    resetButton();
+                });
+
+                rzp.open();
+            } catch (err) {
+                console.error(err);
+                alert("Server se connection nahi hua");
+                resetButton();
+            }
+        }
+
+        payBtn.addEventListener("click", startPayment);
+        loadOrderDetails();
+    </script>
+
+</body>
+
+</html>

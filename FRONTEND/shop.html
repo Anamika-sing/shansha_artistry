@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shop - Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+    <h1>Shansha Artistry</h1>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="my_orders.html">My Orders</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="cart.html">Cart</a>
+    <a href="admin_login.html">Admin</a>
+    <a href="user_login.html">Login</a>
+  </nav>
+</header>
+
+<section class="shop">
+  <h1> Shop Lippan Art</h1>
+
+  <div class="filters">
+    <select id="priceFilter">
+      <option value="">Filter by Price</option>
+      <option value="low">Low to High</option>
+      <option value="high">High to Low</option>
+    </select>
+
+    <select id="sizeFilter">
+      <option value="">Filter by Size</option>
+      <option value="Small">Small</option>
+      <option value="Medium">Medium</option>
+      <option value="Large">Large</option>
+    </select>
+  </div>
+  <br>
+  <br>
+
+  <div class="product-grid" id="productGrid">
+    <p>Products load ho rahe hain...</p>
+  </div>
+</section>
+
+<a class="whatsapp" href="https://wa.me/917000916463">💬</a>
+
+<div id="productModal" class="modal">
+  <div class="modal-content">
+    <span id="closeModal">&times;</span>
+    <img id="modalImg" width="200">
+    <h2 id="modalTitle"></h2>
+    <p id="modalPrice"></p>
+    <p id="modalDetails"></p>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:5000/api";
+let allProducts = [];
+
+// text ko HTML mein safe tarah se dikhane ke liye
+function esc(text) {
+  const d = document.createElement("div");
+  d.textContent = text == null ? "" : String(text);
+  return d.innerHTML;
+}
+
+function showToast(text) {
+  const msg = document.createElement("div");
+  msg.textContent = text;
+  msg.style.position = "fixed";
+  msg.style.bottom = "20px";
+  msg.style.right = "20px";
+  msg.style.background = "green";
+  msg.style.color = "white";
+  msg.style.padding = "10px";
+  msg.style.borderRadius = "5px";
+  msg.style.zIndex = "9999";
+  document.body.appendChild(msg);
+  setTimeout(function () { msg.remove(); }, 2000);
+}
+
+// ---------- CART ----------
+function addToCart(p) {
+  let cart;
+  try {
+    cart = JSON.parse(localStorage.getItem("cart")) || [];
+  } catch (e) {
+    cart = [];
+  }
+  if (!Array.isArray(cart)) cart = [];
+
+  const existing = cart.find(function (item) {
+    return item.name === p.name && item.image === p.image;
+  });
+
+  if (existing) {
+    existing.quantity = (existing.quantity || 1) + 1;
+  } else {
+    cart.push({ name: p.name, price: p.price, image: p.image, quantity: 1 });
+  }
+
+  localStorage.setItem("cart", JSON.stringify(cart));
+  showToast("Added to Cart!");
+}
+
+// ---------- VIEW DETAILS ----------
+function showDetails(p) {
+  document.getElementById("modalImg").src = p.image;
+  document.getElementById("modalTitle").textContent = p.name;
+  document.getElementById("modalPrice").textContent = "\u20B9" + p.price;
+
+  document.getElementById("modalDetails").innerHTML =
+    "<b>Base:</b> " + esc(p.base || "MDF Board") + "<br>" +
+    "<b>Size:</b> " + esc(p.size || "12x20 inches") + "<br>" +
+    "<b>Thickness:</b> " + esc(p.thickness || "3 mm") + "<br>" +
+    "<b>Work:</b> Mirror work + Clay work<br>" +
+    "<b>Medium:</b> " + esc(p.medium || "Acrylic colour") + "<br>" +
+    "<b>Finish:</b> Fully varnished<br>" +
+    "<b>Extra:</b> Hook backside";
+
+  document.getElementById("productModal").style.display = "flex";
+}
+
+document.getElementById("closeModal").onclick = function () {
+  document.getElementById("productModal").style.display = "none";
+};
+
+// ---------- PRODUCT CARDS ----------
+function makeButton(text, className, onClick) {
+  const b = document.createElement("button");
+  b.textContent = text;
+  if (className) b.className = className;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function makeCard(p) {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const img = document.createElement("img");
+  img.src = p.image || "IMAGES/logo.jpg";
+  img.alt = p.name || "Product";
+  img.onerror = function () { img.src = "IMAGES/logo.jpg"; };
+
+  const title = document.createElement("h3");
+  title.textContent = p.name || "Product";
+
+  const price = document.createElement("p");
+  price.textContent = "\u20B9" + p.price;
+
+  card.append(
+    img,
+    title,
+    price,
+    makeButton("Add to Cart", "add-to-cart", function () { addToCart(p); }),
+    makeButton("View Details", "view", function () { showDetails(p); }),
+    makeButton("buy now", "", function () {
+      if (!p._id) {
+        alert("Online payment ke liye backend aur database chalu hona chahiye. Abhi Cash on Delivery use karein.");
+        return;
+      }
+      window.location.href = "online_payment.html?id=" + encodeURIComponent(p._id);
+    }),
+    makeButton("Cash on Delivery", "", function () {
+      window.location.href =
+        "cod.html?product=" + encodeURIComponent(p.name) + "&amount=" + p.price;
+    })
+  );
+
+  return card;
+}
+
+function renderProducts() {
+  const grid = document.getElementById("productGrid");
+  const sizeValue = document.getElementById("sizeFilter").value;
+  const priceValue = document.getElementById("priceFilter").value;
+
+  let list = allProducts.filter(function (p) {
+    if (sizeValue === "") return true;
+    return (p.category || "").toLowerCase() === sizeValue.toLowerCase();
+  });
+
+  if (priceValue === "low") {
+    list = list.slice().sort(function (a, b) { return Number(a.price) - Number(b.price); });
+  } else if (priceValue === "high") {
+    list = list.slice().sort(function (a, b) { return Number(b.price) - Number(a.price); });
+  }
+
+  grid.innerHTML = "";
+
+  if (list.length === 0) {
+    const empty = document.createElement("p");
+    empty.textContent = allProducts.length === 0
+      ? "Abhi koi product available nahi hai."
+      : "Is filter mein koi product nahi mila.";
+    grid.appendChild(empty);
+    return;
+  }
+
+  list.forEach(function (p) { grid.appendChild(makeCard(p)); });
+}
+
+// Backend ya database na chale to ye built-in list dikhegi
+const FALLBACK_PRODUCTS = [
+  {
+    "image": "IMAGES/wallhanging.jpeg",
+    "name": "Wall Hanging",
+    "price": 499,
+    "category": "Medium",
+    "size": "12x20 inches (Rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging1.jpeg",
+    "name": "Wall Hanging",
+    "price": 799,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging2.jpeg",
+    "name": "Wall Hanging",
+    "price": 799,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging3.jpeg",
+    "name": "Wall Hanging",
+    "price": 799,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging4.jpeg",
+    "name": "Wall Hanging",
+    "price": 500,
+    "category": "Medium",
+    "size": "12 inches/30 cm (circle)",
+    "thickness": "2.5 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging5.jpeg",
+    "name": "Wall Hanging",
+    "price": 500,
+    "category": "Medium",
+    "size": "12 inches/30 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging6.jpeg",
+    "name": "Wall Hanging",
+    "price": 899,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging7.jpeg",
+    "name": "Wall Hanging",
+    "price": 899,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging8.jpeg",
+    "name": "Wall Hanging",
+    "price": 999,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging9.jpeg",
+    "name": "Wall Hanging",
+    "price": 599,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/peacock.jpeg",
+    "name": "Peacock Design",
+    "price": 1600,
+    "category": "Medium",
+    "size": "12/20 inches (rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging10.jpeg",
+    "name": "Wall Hanging",
+    "price": 600,
+    "category": "Medium",
+    "size": "12 inches/30 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging11.jpeg",
+    "name": "Wall Hanging",
+    "price": 2100,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "2.5 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/wallhanging3.jpeg",
+    "name": "Wall Hanging",
+    "price": 2100,
+    "category": "Large",
+    "size": "24 inches/61 cm (circle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/mirrorimage.jpeg",
+    "name": "Mirror",
+    "price": 599,
+    "category": "Medium",
+    "size": "12x20 inches (Rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/mirrorimage1.jpeg",
+    "name": "Mirror",
+    "price": 599,
+    "category": "Medium",
+    "size": "12x20 inches (Rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/mirrorimage3.jpeg",
+    "name": "Mirror",
+    "price": 599,
+    "category": "Small",
+    "size": "12x12 inches (Rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/candle.jpeg",
+    "name": "Candle Holder",
+    "price": 599,
+    "category": "Medium",
+    "size": "12x20 inches (rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/candle1.jpeg",
+    "name": "Candle Holder",
+    "price": 599,
+    "category": "Small",
+    "size": "12x12 inches (rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  },
+  {
+    "image": "IMAGES/candleholder1.jpeg",
+    "name": "Candle Holder",
+    "price": 599,
+    "category": "Small",
+    "size": "12x12 inches (Rectangle)",
+    "thickness": "3 mm",
+    "base": "MDF Board",
+    "medium": "Acrylic colour"
+  }
+];
+
+async function loadShop() {
+  try {
+    const response = await fetch(API + "/products");
+    if (!response.ok) throw new Error("Server ne " + response.status + " bheja");
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("Database mein abhi koi product nahi hai");
+    }
+
+    allProducts = data;
+  } catch (error) {
+    console.warn("Backend se products nahi aaye, built-in list dikha rahe hain:", error.message);
+    allProducts = FALLBACK_PRODUCTS;
+  }
+
+  renderProducts();
+}
+
+document.getElementById("priceFilter").addEventListener("change", renderProducts);
+document.getElementById("sizeFilter").addEventListener("change", renderProducts);
+
+loadShop();
+</script>
+</body>
+</html>

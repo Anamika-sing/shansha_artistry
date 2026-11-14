@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>cart - Shansha Artistry</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <img src="IMAGES/logo.jpg" alt="Shansha Artistry Logo"></div>
+    <h1>Shansha Artistry</h1>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="my_orders.html">My Orders</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="admin_login.html">Admin</a>
+    <a href="user_login.html">Login</a>
+  </nav>
+</header>
+
+<div id="cart-items"></div>
+
+<div style="max-width:1000px; margin:0 auto; padding:0 16px;">
+  <h2 id="totalPrice">Total: ₹0</h2>
+
+  <a id="whatsappOrder" target="_blank">Order on WhatsApp</a>
+
+  <br><br>
+  <button id="orderBtn">Place Order</button>
+</div>
+
+<!-- Payment method chunne ka popup -->
+<div id="payModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000;">
+  <div style="background:#fff; color:#222; padding:24px; border-radius:12px; width:90%; max-width:380px; text-align:center;">
+    <h3>Payment method chuno</h3>
+    <p id="payTotal" style="margin:8px 0 16px;"></p>
+
+    <button id="codChoice" style="display:block; margin:10px auto; width:100%;">Cash on Delivery</button>
+    <button id="onlineChoice" style="display:block; margin:10px auto; width:100%;">Pay Online (Card / UPI / Netbanking)</button>
+    <button id="payCancel" style="display:block; margin:16px auto 0; width:100%; background:#999;">Cancel</button>
+  </div>
+</div>
+
+<script>
+  const container = document.getElementById("cart-items");
+  const orderBtn = document.getElementById("orderBtn");
+  const payModal = document.getElementById("payModal");
+
+  // GET CART
+  function getCart() {
+    try {
+      const data = JSON.parse(localStorage.getItem("cart"));
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // SAVE CART
+  function saveCart(cart) {
+    localStorage.setItem("cart", JSON.stringify(cart));
+  }
+
+  // price chahe number ho ya "₹500" jaisa string, dono chalega
+  function priceOf(item) {
+    return parseInt(String(item.price).replace(/[^\d]/g, "")) || 0;
+  }
+
+  function makeEl(tag, text) {
+    const el = document.createElement(tag);
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  // RENDER CART
+  function renderCart() {
+    const cart = getCart();
+    container.innerHTML = "";
+
+    if (cart.length === 0) {
+      container.appendChild(makeEl("h2", "Your cart is empty 🛒"));
+      document.getElementById("totalPrice").innerText = "Total: ₹0";
+      document.getElementById("whatsappOrder").removeAttribute("href");
+      orderBtn.disabled = true;
+      return;
+    }
+
+    orderBtn.disabled = false;
+
+    let total = 0;
+    let message = "Order Details:\n";
+
+    cart.forEach((item, index) => {
+      const price = priceOf(item);
+      const qty = item.quantity || 1;
+      total += price * qty;
+      message += item.name + " x" + qty + " - ₹" + price + "\n";
+
+      const div = document.createElement("div");
+
+      const img = document.createElement("img");
+      img.src = item.image || "IMAGES/logo.jpg";
+      img.width = 80;
+      img.onerror = function () { img.src = "IMAGES/logo.jpg"; };
+
+      const info = document.createElement("div");
+      info.appendChild(makeEl("h3", item.name || "Product"));
+      info.appendChild(makeEl("p", "₹" + price));
+
+      const minus = makeEl("button", "-");
+      minus.onclick = function () { changeQty(index, -1); };
+      const plus = makeEl("button", "+");
+      plus.onclick = function () { changeQty(index, 1); };
+
+      info.appendChild(minus);
+      info.appendChild(makeEl("span", " " + qty + " "));
+      info.appendChild(plus);
+      info.appendChild(document.createElement("br"));
+
+      const remove = makeEl("button", "Remove");
+      remove.onclick = function () { removeItem(index); };
+      info.appendChild(remove);
+      info.appendChild(document.createElement("hr"));
+
+      div.appendChild(img);
+      div.appendChild(info);
+      container.appendChild(div);
+    });
+
+    document.getElementById("totalPrice").innerText = "Total: ₹" + total;
+
+    message += "Total: ₹" + total;
+    document.getElementById("whatsappOrder").href =
+      "https://wa.me/917000916463?text=" + encodeURIComponent(message);
+  }
+
+  // CHANGE QTY
+  function changeQty(index, change) {
+    const cart = getCart();
+    cart[index].quantity = (cart[index].quantity || 1) + change;
+    if (cart[index].quantity <= 0) {
+      cart.splice(index, 1);
+    }
+    saveCart(cart);
+    renderCart();
+  }
+
+  // REMOVE ITEM
+  function removeItem(index) {
+    const cart = getCart();
+    cart.splice(index, 1);
+    saveCart(cart);
+    renderCart();
+  }
+
+  // PLACE ORDER: pehle payment method ka popup dikhao
+  function openPayModal() {
+    const cart = getCart();
+
+    if (cart.length === 0) {
+      alert("Cart is empty!");
+      return;
+    }
+
+    if (!localStorage.getItem("token")) {
+      alert("Order karne ke liye pehle login karein.");
+      window.location.href = "user_login.html";
+      return;
+    }
+
+    document.getElementById("payTotal").textContent =
+      document.getElementById("totalPrice").innerText;
+    payModal.style.display = "flex";
+  }
+
+  function closePayModal() {
+    payModal.style.display = "none";
+  }
+
+  // page = cod.html ya online_payment.html
+  function goCheckout(page) {
+    window.location.href = page + "?from=cart";
+  }
+
+  orderBtn.addEventListener("click", openPayModal);
+  document.getElementById("codChoice").addEventListener("click", function () {
+    goCheckout("cod.html");
+  });
+  document.getElementById("onlineChoice").addEventListener("click", function () {
+    goCheckout("online_payment.html");
+  });
+  document.getElementById("payCancel").addEventListener("click", closePayModal);
+
+  // popup ke bahar click karne par band ho jaye
+  payModal.addEventListener("click", function (e) {
+    if (e.target === payModal) closePayModal();
+  });
+
+  renderCart();
+</script>
+
+</body>
+</html>
