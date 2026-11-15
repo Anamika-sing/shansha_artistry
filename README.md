@@ -2,7 +2,7 @@
 
 A full-stack e-commerce website for handmade Lippan art. Customers can browse products, add them to a cart and pay by Cash on Delivery or online (Razorpay). An admin dashboard manages products and orders.
 
-> Live demo: _coming soon_
+> Live demo: https://shanshaartistryproject.netlify.app/
 
 ## Features
 
