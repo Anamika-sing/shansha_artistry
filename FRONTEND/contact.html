@@ -101,7 +101,7 @@ document.querySelector(".contact-form").addEventListener("submit", async functio
   const email = this.querySelector("input[type='email']").value;
   const message = this.querySelector("textarea").value;
 
-  const response = await fetch("http://localhost:5000/api/orders", {
+  const response = await fetch("https://shansha-artistry.onrender.com/api/orders", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

@@ -65,7 +65,7 @@ async function handleAuth() {
   try {
     if (isLogin) {
       // LOGIN
-      const res = await fetch("http://localhost:5000/api/users/login", {
+      const res = await fetch("https://shansha-artistry.onrender.com/api/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -82,7 +82,7 @@ async function handleAuth() {
       }
     } else {
       // SIGNUP
-      const res = await fetch("http://localhost:5000/api/users/signup", {
+      const res = await fetch("https://shansha-artistry.onrender.com/api/users/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password })

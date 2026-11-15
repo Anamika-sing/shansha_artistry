@@ -90,7 +90,7 @@ async function loadOrders() {
   const table = document.getElementById("ordersTable");
 
   try {
-    const response = await fetch("http://localhost:5000/api/orders", {
+    const response = await fetch("https://shansha-artistry.onrender.com/api/orders", {
       headers: authHeader()
     });
 
@@ -163,7 +163,7 @@ async function loadOrders() {
 
 async function updateStatus(id, paymentStatus) {
   try {
-    const response = await fetch("http://localhost:5000/api/orders/" + id + "/status", {
+    const response = await fetch("https://shansha-artistry.onrender.com/api/orders/" + id + "/status", {
       method: "PUT",
       headers: Object.assign({ "Content-Type": "application/json" }, authHeader()),
       body: JSON.stringify({ paymentStatus })
@@ -198,7 +198,7 @@ async function addProduct() {
   }
 
   try {
-    const response = await fetch("http://localhost:5000/api/products", {
+    const response = await fetch("https://shansha-artistry.onrender.com/api/products", {
       method: "POST",
       headers: Object.assign({ "Content-Type": "application/json" }, authHeader()),
       body: JSON.stringify({ name, price, image, category })
@@ -232,7 +232,7 @@ async function loadProducts() {
   const productsDiv = document.getElementById("products");
 
   try {
-    const response = await fetch("http://localhost:5000/api/products");
+    const response = await fetch("https://shansha-artistry.onrender.com/api/products");
 
     if (!response.ok) {
       throw new Error("Products not found");
@@ -286,7 +286,7 @@ async function deleteProduct(id) {
   }
 
   try {
-    const response = await fetch("http://localhost:5000/api/products/" + id, {
+    const response = await fetch("https://shansha-artistry.onrender.com/api/products/" + id, {
       method: "DELETE",
       headers: authHeader()
     });
